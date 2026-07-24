@@ -227,7 +227,11 @@ final class NativePluginUpdater {
 		}
 
 		$offer = $this->offer();
-		if ( null === $offer || version_compare( $offer['version'], $currentVersion, '<=' ) ) {
+		if ( null === $offer ) {
+			return false;
+		}
+		if ( version_compare( $offer['version'], $currentVersion, '<=' ) ) {
+			$this->storeCurrent( $offer );
 			return false;
 		}
 
@@ -421,6 +425,7 @@ final class NativePluginUpdater {
 	private function offer(): ?array {
 		$state         = $this->cachedState();
 		$offer         = $this->validatedOffer( $state['offer'] ?? null );
+		$current       = $this->validatedOffer( $state['current'] ?? null );
 		$age           = is_int( $state['checked_at'] ?? null )
 			? ( $this->now() - $state['checked_at'] )
 			: PHP_INT_MAX;
@@ -434,6 +439,9 @@ final class NativePluginUpdater {
 		}
 		if ( null !== $offer && $age >= 0 && $age < $this->cacheDuration ) {
 			return $offer;
+		}
+		if ( null !== $current && $age >= 0 && $age < $this->cacheDuration ) {
+			return $current;
 		}
 		if ( 'unavailable' === ( $state['status'] ?? null )
 			&& is_int( $state['failed_at'] ?? null )
@@ -652,6 +660,35 @@ final class NativePluginUpdater {
 				'diagnostic'  => array(
 					'code'  => 'release_available',
 					'state' => 'ready',
+				),
+			),
+			$this->cacheDuration + 86400
+		);
+	}
+
+	/**
+	 * Retain a fresh verified descriptor for cache reuse without presenting it
+	 * as an available update.
+	 *
+	 * @param Offer $release Current verified release.
+	 */
+	private function storeCurrent( array $release ): void {
+		$state = $this->cachedState();
+		set_site_transient(
+			$this->cacheKey(),
+			array(
+				'schema'      => self::CACHE_SCHEMA,
+				'status'      => 'current',
+				'checked_at'  => is_int( $state['checked_at'] ?? null )
+					? $state['checked_at']
+					: $this->now(),
+				'current'     => $release,
+				'conditional' => $this->conditionalToArray(
+					$this->conditionalFromState( $state )
+				),
+				'diagnostic'  => array(
+					'code'  => 'up_to_date',
+					'state' => 'current',
 				),
 			),
 			$this->cacheDuration + 86400
