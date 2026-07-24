@@ -2,7 +2,7 @@
 /**
  * Plugin Name: RAN GitHub Updater Dummy
  * Description: Disposable public fixture for the RAN GitHub Release Updater.
- * Version: 0.1.0
+ * Version: 0.2.0
  * Requires at least: 6.5
  * Requires PHP: 8.0
  * Update URI: https://github.com/RocketsAreNostalgic/ran-github-updater-dummy
